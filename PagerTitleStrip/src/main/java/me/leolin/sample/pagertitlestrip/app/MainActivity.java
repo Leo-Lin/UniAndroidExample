@@ -21,17 +21,12 @@ public class MainActivity extends AppCompatActivity {
         viewPager = (ViewPager) findViewById(R.id.pager);
         viewPager.setAdapter(new PagerAdapter(getSupportFragmentManager()));
 
-        // Give the PagerSlidingTabStrip the ViewPager
         PagerSlidingTabStrip tabsStrip = (PagerSlidingTabStrip) findViewById(R.id.tabs);
-        // Attach the view pager to the tab strip
         tabsStrip.setViewPager(viewPager);
     }
 
 
-    class PagerAdapter extends FragmentPagerAdapter {
-
-
-        private String[] pagerTitles = {"Page1", "Page2", "Page3"};
+    class PagerAdapter extends FragmentPagerAdapter implements PagerSlidingTabStrip.IconTabProvider {
 
         public PagerAdapter(FragmentManager fm) {
             super(fm);
@@ -54,9 +49,10 @@ public class MainActivity extends AppCompatActivity {
             return 3;
         }
 
+
         @Override
-        public CharSequence getPageTitle(int position) {
-            return pagerTitles[position];
+        public int getPageIconResId(int position) {
+            return R.mipmap.ic_launcher;
         }
     }
 }
