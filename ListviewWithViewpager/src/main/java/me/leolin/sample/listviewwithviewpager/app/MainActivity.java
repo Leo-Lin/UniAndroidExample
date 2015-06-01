@@ -8,6 +8,11 @@ import android.support.v4.view.ViewPager;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonArrayRequest;
+import me.leolin.sample.listviewwithviewpager.app.volley.VolleyQueue;
+import org.json.JSONArray;
 
 import java.util.List;
 
@@ -17,17 +22,19 @@ public class MainActivity extends Activity {
     private ProductRepository productRepository = new ProductRepository();
     private TextView textViewPriceSum;
     private Button buttonGoToCart;
+    private ProgressBar progressBar;
+    private ListView listView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        ListView listView = (ListView) findViewById(R.id.listview);
-        listView.setAdapter(new CategoryListViewAdapter());
 
+        listView = (ListView) findViewById(R.id.listview);
         textViewPriceSum = (TextView) findViewById(R.id.textViewPriceSum);
         buttonGoToCart = (Button) findViewById(R.id.buttonGoToCart);
+        progressBar = (ProgressBar) findViewById(R.id.progressBar);
 
         buttonGoToCart.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -36,12 +43,38 @@ public class MainActivity extends Activity {
                 startActivity(intent);
             }
         });
+
+        progressBar.setVisibility(View.VISIBLE);
+
+        JsonArrayRequest request = new JsonArrayRequest("http://jasonchi.ddns.net:8080/api/product", new Response.Listener<JSONArray>() {
+            @Override
+            public void onResponse(JSONArray response) {
+                progressBar.setVisibility(View.GONE);
+                ProductRepository.refreshData(response);
+                render();
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                progressBar.setVisibility(View.GONE);
+                Toast.makeText(MainActivity.this, error.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+        request.setTag("product");
+
+        VolleyQueue.getInstance(this).getRequestQueue().add(request);
+    }
+
+
+    private void render() {
+        listView.setAdapter(new CategoryListViewAdapter());
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         Cart.getProductInCart().clear();
+        VolleyQueue.getInstance(this).getRequestQueue().cancelAll("product");
     }
 
     private class CategoryListViewAdapter extends BaseAdapter {

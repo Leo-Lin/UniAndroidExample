@@ -17,7 +17,7 @@ android {
     buildToolsVersion "22.0.1"
 
     defaultConfig {
-        applicationId "me.leolin.sample.listviewwithviewpager.app"
+        applicationId "me.leolin.sample.parcelable.app"
         minSdkVersion 8
         targetSdkVersion 22
         versionCode 1
@@ -38,6 +38,5 @@ android {
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile 'com.android.support:appcompat-v7:22.1.1'
-    compile 'com.mcxiaoke.volley:library:1.0.+'
+    compile 'com.android.support:appcompat-v7:22.2.0'
 }

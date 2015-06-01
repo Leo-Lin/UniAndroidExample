@@ -11,9 +11,8 @@ public class CategoryVo {
     private String name;
     private List<ProductVo> productVos = new LinkedList<ProductVo>();
 
-    public CategoryVo(String id, String name) {
+    public CategoryVo(String id) {
         this.id = id;
-        this.name = name;
     }
 
     public String getId() {
