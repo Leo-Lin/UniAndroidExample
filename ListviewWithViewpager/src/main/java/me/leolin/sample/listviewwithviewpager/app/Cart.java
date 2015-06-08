@@ -1,6 +1,7 @@
 package me.leolin.sample.listviewwithviewpager.app;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -48,4 +49,30 @@ public class Cart {
         }
         return sum;
     }
+
+    public static String getAvailableComboId() {
+        List<ComboVo> combos = ComboRepository.getCombos();
+        for (ComboVo combo : combos) {
+            List<ComboDetailVo> details = combo.getDetails();
+
+            boolean available = true;
+            for (ComboDetailVo detail : details) {
+                Integer countInProduct = productInCart.get(detail.getProductId());
+                Integer countInDetail = detail.getQuantity();
+
+                if (countInDetail.intValue() > countInProduct.intValue()) {
+                    available = false;
+                    break;
+                }
+            }
+
+            if (available) {
+                return combo.getId();
+            }
+        }
+
+        return null;
+    }
+
+
 }

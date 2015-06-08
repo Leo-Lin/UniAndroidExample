@@ -1,6 +1,8 @@
 package me.leolin.sample.listviewwithviewpager.app;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.view.PagerAdapter;
@@ -8,13 +10,16 @@ import android.support.v4.view.ViewPager;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
+import com.android.volley.AuthFailureError;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonArrayRequest;
 import me.leolin.sample.listviewwithviewpager.app.volley.VolleyQueue;
 import org.json.JSONArray;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 
 public class MainActivity extends Activity {
@@ -24,6 +29,8 @@ public class MainActivity extends Activity {
     private Button buttonGoToCart;
     private ProgressBar progressBar;
     private ListView listView;
+    private String apiKey = "TimothyApi";
+    private CategoryListViewAdapter categoryListViewAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,13 +51,44 @@ public class MainActivity extends Activity {
             }
         });
 
-        progressBar.setVisibility(View.VISIBLE);
+        loadProducts();
+    }
 
+    private void loadProducts() {
+        progressBar.setVisibility(View.VISIBLE);
         JsonArrayRequest request = new JsonArrayRequest("http://jasonchi.ddns.net:8080/api/product", new Response.Listener<JSONArray>() {
             @Override
             public void onResponse(JSONArray response) {
                 progressBar.setVisibility(View.GONE);
                 ProductRepository.refreshData(response);
+                loadCombo();
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                progressBar.setVisibility(View.GONE);
+                Toast.makeText(MainActivity.this, error.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        }) {
+            @Override
+            public Map<String, String> getHeaders() throws AuthFailureError {
+                Map<String, String> map = new HashMap<String, String>();
+                map.put("ApiKey", apiKey);
+                return map;
+            }
+        };
+        request.setTag("product");
+
+        VolleyQueue.getInstance(this).getRequestQueue().add(request);
+    }
+
+    private void loadCombo() {
+        progressBar.setVisibility(View.VISIBLE);
+        JsonArrayRequest request = new JsonArrayRequest("http://jasonchi.ddns.net:8080/api/Combo", new Response.Listener<JSONArray>() {
+            @Override
+            public void onResponse(JSONArray response) {
+                progressBar.setVisibility(View.GONE);
+                ComboRepository.refreshData(response);
                 render();
             }
         }, new Response.ErrorListener() {
@@ -59,7 +97,14 @@ public class MainActivity extends Activity {
                 progressBar.setVisibility(View.GONE);
                 Toast.makeText(MainActivity.this, error.getMessage(), Toast.LENGTH_SHORT).show();
             }
-        });
+        }) {
+            @Override
+            public Map<String, String> getHeaders() throws AuthFailureError {
+                Map<String, String> map = new HashMap<String, String>();
+                map.put("ApiKey", apiKey);
+                return map;
+            }
+        };
         request.setTag("product");
 
         VolleyQueue.getInstance(this).getRequestQueue().add(request);
@@ -67,7 +112,8 @@ public class MainActivity extends Activity {
 
 
     private void render() {
-        listView.setAdapter(new CategoryListViewAdapter());
+        categoryListViewAdapter = new CategoryListViewAdapter();
+        listView.setAdapter(categoryListViewAdapter);
     }
 
     @Override
@@ -173,6 +219,9 @@ public class MainActivity extends Activity {
                     public void onClick(View v) {
                         Cart.addToCart(productId, 1);
 
+                        //檢查套餐
+                        checkCombo();
+
                         textViewProductCount.setText(String.valueOf(Cart.getProductCountInCart(productId)));
                         textViewPriceSum.setText(String.valueOf(Cart.calculateSumPrice()));
                     }
@@ -209,6 +258,42 @@ public class MainActivity extends Activity {
         @Override
         public void destroyItem(ViewGroup container, int position, Object object) {
             container.removeView((View) object);
+        }
+    }
+
+    private void checkCombo() {
+        final String availableComboId = Cart.getAvailableComboId();
+        if (availableComboId != null) {
+            new AlertDialog.Builder(MainActivity.this)
+                    .setTitle("符合套餐")
+                    .setMessage("是否要升級為套餐？")
+                    .setPositiveButton("是", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            Cart.addToCart(availableComboId, 1);
+
+                            ComboVo comboVo = ComboRepository.getCombosMap().get(availableComboId);
+                            for (ComboDetailVo detailVo : comboVo.getDetails()) {
+                                Cart.addToCart(detailVo.getProductId(), 0 - detailVo.getQuantity());
+                            }
+
+                            //更新商品數量
+                            categoryListViewAdapter.notifyDataSetChanged();
+
+                            //更新總數
+                            textViewPriceSum.setText(String.valueOf(Cart.calculateSumPrice()));
+
+                            //繼續檢查
+                            checkCombo();
+                        }
+                    })
+                    .setNegativeButton("否", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+
+                        }
+                    })
+                    .show();
         }
     }
 
