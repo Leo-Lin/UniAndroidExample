@@ -1,25 +1,25 @@
 package me.leolin.sample.loginexample.app;
 
 import android.content.Intent;
-import android.os.AsyncTask;
+import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.support.v7.app.ActionBarActivity;
+import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.Toast;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.util.EntityUtils;
+import com.android.volley.Request;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+import me.leolin.sample.loginexample.app.volley.VolleyQueue;
 import org.json.JSONObject;
 
 
-public class LoginActivity extends ActionBarActivity {
+public class LoginActivity extends AppCompatActivity {
 
     private static final String LOG_TAG = LoginActivity.class.getSimpleName();
 
@@ -27,11 +27,20 @@ public class LoginActivity extends ActionBarActivity {
     private EditText editTextAccount;
     private EditText editTextPassword;
     private ProgressBar progressBar;
+    private SharedPreferences sharedPreferences;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+
+        //share storage
+        sharedPreferences = getSharedPreferences("APIKey", MODE_PRIVATE);
+
+        //means login
+        if (sharedPreferences.getString("APIKey", null) != null) {
+            goToNextActivity();
+        }
 
         buttonLogin = (Button) findViewById(R.id.buttonLogin);
         editTextAccount = (EditText) findViewById(R.id.editTextAccount);
@@ -44,59 +53,57 @@ public class LoginActivity extends ActionBarActivity {
                 doLogin();
             }
         });
+
+
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        VolleyQueue.getInstance(this).getRequestQueue().cancelAll("login");
     }
 
     private void doLogin() {
-        new AsyncTask<Void, Void, Boolean>() {
-            @Override
-            protected void onPreExecute() {
-                progressBar.setVisibility(View.VISIBLE);
-            }
+        try {
+            progressBar.setVisibility(View.VISIBLE);
 
-            @Override
-            protected void onPostExecute(Boolean loginSuccess) {
-                progressBar.setVisibility(View.GONE);
+            JSONObject loginBody = new JSONObject();
+            loginBody.put("Account", editTextAccount.getText().toString());
+            loginBody.put("Password", editTextPassword.getText().toString());
+            final JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, "http://jasonchi.ddns.net:8080/api/Authenticate", loginBody,
+                    new Response.Listener<JSONObject>() {
+                        @Override
+                        public void onResponse(JSONObject response) {
+                            progressBar.setVisibility(View.INVISIBLE);
+                            if (!TextUtils.isEmpty(response.optString("Failure"))) {
+                                Toast.makeText(LoginActivity.this, "Login fail", Toast.LENGTH_SHORT).show();
+                                return;
+                            }
 
-                if (loginSuccess) {
-                    goToNextActivity();
-                } else {
-                    Toast.makeText(LoginActivity.this, "Login fail.", Toast.LENGTH_SHORT).show();
-                }
-            }
+                            String apiKey = response.optString("APIKey");
+                            if (TextUtils.isEmpty(apiKey)) {
+                                Toast.makeText(LoginActivity.this, "Login fail,cannot get APIKey", Toast.LENGTH_SHORT).show();
+                                return;
+                            }
 
-            @Override
-            protected Boolean doInBackground(Void... params) {
-                Boolean result = false;
-                try {
-                    HttpClient client = new DefaultHttpClient();
-
-                    HttpPost post = new HttpPost("http://jasonchi.ddns.net:8080/api/Authenticate");
-                    post.addHeader("content-type", "application/json");
-
-                    JSONObject jsonBody = new JSONObject();
-                    jsonBody.put("Account", editTextAccount.getText());
-                    jsonBody.put("Password", editTextPassword.getText());
-
-                    post.setEntity(new StringEntity(jsonBody.toString(), "UTF-8"));
-
-                    HttpResponse response = client.execute(post);
-                    int statusCode = response.getStatusLine().getStatusCode();
-                    if (statusCode == 200) {
-                        String responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
-                        JSONObject responseJson = new JSONObject(responseBody);
-                        if (responseJson.optBoolean("success")) {
-                            result = responseJson.getBoolean("success");
+                            sharedPreferences.edit().putString("APIKey", apiKey).commit();
+                            goToNextActivity();
                         }
-                    } else {
-                        Log.d(LOG_TAG, "Login fail with status code=" + statusCode);
+                    },
+                    new Response.ErrorListener() {
+                        @Override
+                        public void onErrorResponse(VolleyError error) {
+                            progressBar.setVisibility(View.INVISIBLE);
+                            Toast.makeText(LoginActivity.this, "Login fail:" + error.getMessage(), Toast.LENGTH_SHORT).show();
+                        }
                     }
-                } catch (Exception e) {
-                    Log.e(LOG_TAG, e.getMessage(), e);
-                }
+            );
 
-                return result;
-            }
-        }.execute();
+            VolleyQueue.getInstance(this).getRequestQueue().add(request);
+        } catch (Exception e) {
+            Log.e(LOG_TAG, e.getMessage(), e);
+            progressBar.setVisibility(View.INVISIBLE);
+        }
     }
 
     private void goToNextActivity() {
