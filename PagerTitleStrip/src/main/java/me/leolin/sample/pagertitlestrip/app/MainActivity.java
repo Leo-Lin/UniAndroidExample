@@ -13,6 +13,7 @@ public class MainActivity extends AppCompatActivity {
 
     private ViewPager viewPager;
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -21,9 +22,17 @@ public class MainActivity extends AppCompatActivity {
         viewPager = (ViewPager) findViewById(R.id.pager);
         viewPager.setAdapter(new PagerAdapter(getSupportFragmentManager()));
 
+        render();
+    }
+
+
+
+
+    private void render() {
         PagerSlidingTabStrip tabsStrip = (PagerSlidingTabStrip) findViewById(R.id.tabs);
         tabsStrip.setViewPager(viewPager);
     }
+
 
 
     class PagerAdapter extends FragmentPagerAdapter implements PagerSlidingTabStrip.IconTabProvider {
@@ -35,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public Fragment getItem(int position) {
             if (position == 0) {
-                return new Page1Fragment();
+                return new ProductListFragment();
             } else if (position == 1) {
                 return new Page2Fragment();
             } else if (position == 2) {
