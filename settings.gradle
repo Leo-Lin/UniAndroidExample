@@ -1,4 +1,4 @@
-include ':NotificationExample', ':PagerTitleStrip', ':Parcelable',
+include ':NotificationExample', ':PagerTitleStrip', ':Parcelable', ':ListViewExpandExample',
         ':BottomBarOnListView',
         ':ListviewWithViewpager',
         ':LoginExample',
